@@ -29,8 +29,10 @@ if ($row = pg_fetch_assoc($result)) {
         pg_query($conexion, "INSERT INTO escuela (id_usuario) VALUES ($id_usuario)");
     }
 
-    echo "Registro exitoso 🎉";
-    echo "<br><a href='../login.php'>Ir a login</a>";
+    session_start();
+$_SESSION['mensaje'] = "Cuenta creada correctamente ";
+    header("Location: ../login.php");
+exit();
 
 } else {
     echo "Error al registrar";
