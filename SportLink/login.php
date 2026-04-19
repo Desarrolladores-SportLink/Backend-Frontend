@@ -11,7 +11,14 @@
     <img src="styles/logo sin fondo.png" class="logo">
 
     <h2>Bienvenido a SportLink</h2>
+    <?php
+session_start();
 
+if (isset($_SESSION['mensaje'])) {
+    echo "<div class='toast'>" . $_SESSION['mensaje'] . "</div>";
+    unset($_SESSION['mensaje']);
+}
+?>
     <form action="actions/login_action.php" method="POST">
         <input type="email" name="correo" placeholder="Correo" required>
         <input type="password" name="password" placeholder="Contraseña" required>
