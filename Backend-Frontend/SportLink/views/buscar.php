@@ -1,15 +1,16 @@
 <?php
 /**
- * SportLink - UI_Search (vista de busqueda con filtros)
- * Subcomponente de presentacion (SDD seccion 5).
+ * SportLink - UI_Search (Vista de búsqueda con filtros)
+ * Componente final optimizado con geolocalización y cálculo de distancia.
  */
 require_once __DIR__ . '/../includes/auth_check.php';
-require_role('alumno');
+require_role('alumno'); // Seguridad: solo alumnos acceden al buscador
 
 require_once __DIR__ . '/../actions/buscar_filtros_action.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require __DIR__ . '/../config/conexion.php';
 
+// Ejecución de la lógica de búsqueda (Action -> DB Handler)
 $filtros    = captureFilters();
 $resultados = fnSearchByFilters($filtros);
 $dias       = dias_disponibles();
@@ -19,12 +20,14 @@ $active     = 'buscar';
 include __DIR__ . '/../includes/header.php';
 ?>
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
 <div class="container">
     <div class="search-layout">
 
         <aside class="card">
-            <h3 class="card-title">Filtros de busqueda</h3>
-            <p class="card-subtitle">Refina los resultados segun tus preferencias</p>
+            <h3 class="card-title">Filtros de búsqueda</h3>
+            <p class="card-subtitle">Refina los resultados según tus preferencias</p>
 
             <form method="GET" id="formFiltros">
                 <div class="form-group">
@@ -41,31 +44,43 @@ include __DIR__ . '/../includes/header.php';
                 </div>
 
                 <div class="form-group">
-                    <label>Presupuesto maximo (MXN)</label>
-                    <input type="number" name="precio_max" value="<?= e($filtros['precio_max']) ?>" placeholder="Ej. 500" min="0" step="50">
+                    <label>Presupuesto máximo (MXN)</label>
+                    <input type="number" name="precio_max" value="<?= e($filtros['precio_max']) ?>" placeholder="Ej. 500">
                 </div>
 
                 <div class="form-group">
-                    <label>Ubicacion</label>
-                    <input type="text" name="ubicacion" value="<?= e($filtros['ubicacion']) ?>" placeholder="Ciudad, colonia o zona">
+                    <label>Ubicación</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" name="ubicacion" id="inputUbicacion" value="<?= e($filtros['ubicacion']) ?>" placeholder="Ciudad, colonia o zona" style="flex: 1;">
+                        <button type="button" class="btn btn--ghost" id="btnGeo" title="Usar mi ubicación actual" style="padding: 0 12px;">
+                            📍
+                        </button>
+                    </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Dias de entrenamiento</label>
-                    <div class="chip-group" data-chip-group="dias">
+                    <label>Mapa de búsqueda</label>
+                    <div id="map" style="width: 100%; height: 280px; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-top: 8px; z-index: 1;"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Días de entrenamiento</label>
+                    <div class="chip-group">
                         <?php foreach ($dias as $d):
-                            $isActive = stripos($filtros['dias'], $d) !== false; ?>
+                            $isActive = (isset($filtros['dias_arr']) && in_array($d, $filtros['dias_arr'])); ?>
                             <label class="chip <?= $isActive?'active':'' ?>">
                                 <input type="checkbox" name="dias_arr[]" value="<?= e($d) ?>" <?= $isActive?'checked':'' ?>>
                                 <?= e($d) ?>
                             </label>
                         <?php endforeach; ?>
                     </div>
-                    <input type="hidden" name="dias" id="diasHidden" value="<?= e($filtros['dias']) ?>">
                 </div>
 
+                <input type="hidden" name="lat" id="latHidden" value="<?= e($filtros['lat'] ?? '') ?>">
+                <input type="hidden" name="lng" id="lngHidden" value="<?= e($filtros['lng'] ?? '') ?>">
+
                 <button type="submit" class="btn btn--primary btn--block">Aplicar filtros</button>
-                <a href="buscar.php" class="btn btn--ghost btn--block" style="margin-top:8px;">Limpiar</a>
+                <a href="buscar.php" class="btn btn--ghost btn--block" style="margin-top:8px;">Limpiar búsqueda</a>
             </form>
         </aside>
 
@@ -75,22 +90,17 @@ include __DIR__ . '/../includes/header.php';
                     <?= count($resultados) ?> resultado<?= count($resultados)===1?'':'s' ?>
                 </h2>
                 <span class="text-muted" style="font-size:13px;">
-                    Mostrando <?= $filtros['tipo']==='escuela'?'escuelas':'entrenadores' ?>
-                    <?= $filtros['deporte']!=='' ? 'de '.e($filtros['deporte']) : '' ?>
+                    Mostrando <?= $filtros['tipo']==='escuela'?'escuelas':'entrenadores' ?> 
                 </span>
             </div>
 
             <?php if (empty($resultados)): ?>
                 <div class="card empty-state">
                     <h3>Sin resultados</h3>
-                    <p>Prueba a relajar los filtros o cambiar el tipo de servicio.</p>
+                    <p>No encontramos servicios que coincidan. Prueba a relajar los filtros o mover el mapa.</p>
                 </div>
             <?php else: ?>
-                <?php foreach ($resultados as $row):
-                    [$prom, $totalRes] = get_rating_summary($conexion, (int)$row['id_usuario']);
-                    $favorito = is_favorito($conexion, current_user_id(), (int)$row['id_usuario']);
-                    $tipo     = $row['tipo'];
-                ?>
+                <?php foreach ($resultados as $row): ?>
                     <article class="result-card">
                         <div class="result-avatar">
                             <?php if (!empty($row['foto'])): ?>
@@ -99,48 +109,38 @@ include __DIR__ . '/../includes/header.php';
                                 <?= e(initials($row['nombre'])) ?>
                             <?php endif; ?>
                         </div>
-                        <div class="result-body">
-                            <span class="tag tag--<?= e($tipo) ?>"><?= $tipo==='escuela'?'Escuela':'Entrenador' ?></span>
-                            <h3 class="result-name"><?= e($row['nombre']) ?></h3>
-                            <div class="result-meta">
-                                <span>&#127942; <?= e($row['deporte'] ?: 'Sin especialidad') ?></span>
-                                <span>&#128205; <?= e($row['ubicacion'] ?: 'Ubicacion no indicada') ?></span>
-                                <?php if (!empty($row['dias'])): ?>
-                                    <span>&#128197; <?= e($row['dias']) ?></span>
-                                <?php endif; ?>
-                                <?php if ($totalRes > 0): ?>
-                                    <span><?= render_stars($prom) ?> <span class="text-light">(<?= $totalRes ?>)</span></span>
-                                <?php endif; ?>
-                            </div>
-                            <div class="result-price"><?= format_money($row['precio']) ?> <span class="text-light" style="font-size:12px; font-weight:500;">/ <?= $tipo==='escuela'?'mes':'clase' ?></span></div>
-                        </div>
-                        <div class="result-actions">
-                            <a class="btn btn--primary btn--sm"
-                               href="perfil_publico.php?id=<?= (int)$row['id_usuario'] ?>&tipo=<?= e($tipo) ?>">Ver perfil</a>
-                            <form method="POST" action="../actions/<?= $favorito?'quitar_favorito_action.php':'guardar_favorito_action.php' ?>" style="margin-bottom: 0;">
-                                <input type="hidden" name="id_proveedor" value="<?= (int)$row['id_usuario'] ?>">
-                                <input type="hidden" name="tipo" value="<?= e($tipo) ?>">
-                                <button class="btn btn--ghost btn--sm btn--block" type="submit">
-                                    <?= $favorito?'&#9733; Guardado':'&#9734; Favorito' ?>
-                                </button>
-                            </form>
-                            <button type="button" class="btn btn--ghost btn--sm btn--block" onclick="const el = document.getElementById('contacto-<?= (int)$row['id_usuario'] ?>'); el.style.display = el.style.display === 'none' ? 'block' : 'none';">
-                                Contacto
-                            </button>
-                        </div>
                         
-                        <div id="contacto-<?= (int)$row['id_usuario'] ?>" style="display:none; grid-column: 1 / -1; background: var(--surface-2); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); font-size: 13px; margin-top: 8px;">
-                            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-                                <div><strong>📧 Correo:</strong> <a href="mailto:<?= e($row['correo'] ?? '') ?>"><?= e($row['correo'] ?? 'No disponible') ?></a></div>
-                                <div><strong>📞 Teléfono:</strong> <?= !empty($row['telefono']) ? e($row['telefono']) : 'No especificado' ?></div>
-                                <div><strong>🌐 Red Social:</strong> 
-                                    <?php if (!empty($row['red_social'])): ?>
-                                        <a href="<?= e($row['red_social']) ?>" target="_blank">Visitar perfil</a>
-                                    <?php else: ?>
-                                        <span class="text-light">No especificada</span>
-                                    <?php endif; ?>
-                                </div>
+                        <div class="result-body">
+                            <div class="flex-between">
+                                <span class="tag tag--<?= e($row['tipo']) ?>">
+                                    <?= $row['tipo']==='escuela'?'Escuela':'Entrenador' ?>
+                                </span>
+                                
+                                <?php if (isset($row['distancia'])): ?>
+                                    <span class="distancia-tag">
+                                        📍 A <?= $row['distancia'] ?> km de ti
+                                    </span>
+                                <?php endif; ?>
                             </div>
+
+                            <h3 class="result-name"><?= e($row['nombre']) ?></h3>
+                            
+                            <div class="result-meta">
+                                <span>&#127942; <?= e($row['deporte'] ?: 'Varios') ?></span>
+                                <span>&#128205; <?= e($row['ubicacion'] ?: 'Consultar dirección') ?></span>
+                            </div>
+                            
+                            <div class="result-price">
+                                <?= format_money($row['precio']) ?> 
+                                <span class="text-light" style="font-size:12px;">/ <?= $row['tipo']==='escuela'?'mes':'clase' ?></span>
+                            </div>
+                        </div>
+
+                        <div class="result-actions">
+                            <a class="btn btn--primary btn--sm" 
+                               href="perfil_publico.php?id=<?= $row['id_usuario'] ?>&tipo=<?= $row['tipo'] ?>">
+                               Ver perfil
+                            </a>
                         </div>
                     </article>
                 <?php endforeach; ?>
@@ -149,5 +149,8 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
-<?php include __DIR__ . '/../includes/header.php'; ?>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="../js/mapa.js"></script>
+<script src="../js/app.js"></script>
+
 <?php include __DIR__ . '/../includes/footer.php'; ?>
