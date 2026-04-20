@@ -14,7 +14,7 @@ $r  = pg_query_params(
             e.nombre_escuela, e.direccion,
             e.deporte, e.deportes_ofrecidos,
             e.precio, e.mensualidad,
-            e.ubicacion, e.telefono, e.descripcion, e.dias
+            e.ubicacion, e.telefono, e.descripcion, e.dias, e.red_social
      FROM usuario u
      INNER JOIN escuela e ON u.id_usuario = e.id_usuario
      WHERE u.id_usuario = $1",
@@ -73,6 +73,21 @@ include __DIR__ . '/../includes/header.php';
                     <label>Ubicacion / Zona</label>
                     <input type="text" name="ubicacion" value="<?= e($d['ubicacion'] ?? '') ?>" placeholder="Colonia o zona">
                 </div>
+
+                <div class="form-group" style="grid-column:1/-1;" id="redes-container-escuela">
+                    <label>Enlaces de Redes Sociales</label>
+                    <?php 
+                    $redes_arr = array_filter(array_map('trim', explode(',', $d['red_social'] ?? '')));
+                    if (empty($redes_arr)): ?>
+                        <input type="text" name="red_social[]" value="" placeholder="Ej. https://facebook.com/tu_escuela" style="margin-bottom: 8px;">
+                    <?php else: 
+                        foreach ($redes_arr as $red): ?>
+                            <input type="text" name="red_social[]" value="<?= e($red) ?>" placeholder="Ej. https://facebook.com/tu_escuela" style="margin-bottom: 8px;">
+                    <?php endforeach; 
+                    endif; ?>
+                    <button type="button" class="btn btn--ghost btn--sm" onclick="addRedSocialEscuela()" style="margin-top: 4px;">+ Agregar otra red</button>
+                </div>
+
                 <div class="form-group" style="grid-column:1/-1;">
                     <label>Dias de operacion</label>
                     <div class="chip-group">
@@ -91,9 +106,24 @@ include __DIR__ . '/../includes/header.php';
                     <textarea name="descripcion" rows="4" placeholder="Cuentale a los alumnos sobre tu escuela..."><?= e($d['descripcion'] ?? '') ?></textarea>
                 </div>
             </div>
-            <button type="submit" class="btn btn--primary">Actualizar informacion</button>
+            <div style="margin-top: 20px;">
+                <button type="submit" class="btn btn--primary">Actualizar informacion</button>
+            </div>
         </form>
     </article>
 </div>
+
+<script>
+function addRedSocialEscuela() {
+    const container = document.getElementById('redes-container-escuela');
+    const btn = container.querySelector('button');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.name = 'red_social[]';
+    input.placeholder = 'Ej. https://instagram.com/tu_escuela';
+    input.style.marginBottom = '8px';
+    container.insertBefore(input, btn);
+}
+</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
