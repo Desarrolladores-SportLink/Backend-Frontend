@@ -421,3 +421,29 @@ select {
     color: var(--text-muted);
 }
 .auth-link a { font-weight: 600; }
+
+/* ------------------------------------------------------------------ */
+/* COMPONENTES DE BÚSQUEDA (SportLink)                                */
+/* ------------------------------------------------------------------ */
+
+/* Contenedor para alinear el tipo de servicio y la distancia */
+.flex-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+/* Etiqueta de proximidad */
+.distancia-tag {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #ff6b00; /* Naranja SportLink */
+    background-color: rgba(255, 107, 0, 0.12); /* Fondo suave */
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid rgba(255, 107, 0, 0.2);
+}
