@@ -2,10 +2,10 @@
 /**
  * SportLink - Perfil publico (entrenador / escuela)
  * Implementa las extensiones del flujo de busqueda (SDD seccion 4):
- *   - Visualizacion de perfil
- *   - Agregar a favoritos
- *   - Boton de contacto
- *   - Dejar resena
+ * - Visualizacion de perfil
+ * - Agregar a favoritos
+ * - Boton de contacto
+ * - Dejar resena
  */
 require_once __DIR__ . '/../includes/auth_check.php';
 require_login();
@@ -36,7 +36,6 @@ include __DIR__ . '/../includes/header.php';
     <?= flash('mensaje', 'success') ?>
     <?= flash('error',   'error') ?>
 
-    <!-- Cabecera -->
     <header class="profile-header">
         <div class="avatar-lg">
             <?php if (!empty($datos['foto'])): ?>
@@ -49,13 +48,13 @@ include __DIR__ . '/../includes/header.php';
             <span class="tag tag--<?= e($tipo) ?>"><?= $tipo==='escuela'?'Escuela':'Entrenador' ?></span>
             <h1><?= e($nombreShow) ?></h1>
             <p style="font-size:15px;">
-                &#127942; <?= e($datos['especialidad'] ?? $datos['deporte'] ?? 'Sin especialidad') ?>
-                &nbsp;&middot;&nbsp;
-                &#128205; <?= e($datos['ubicacion'] ?? $datos['direccion'] ?? 'Sin ubicacion') ?>
+                🏆 <?= e($datos['especialidad'] ?? $datos['deporte'] ?? 'Sin especialidad') ?>
+                &nbsp;·&nbsp;
+                📍 <?= e($datos['ubicacion'] ?? $datos['direccion'] ?? 'Sin ubicacion') ?>
             </p>
             <p style="margin-top:10px;">
                 <?= render_stars($prom) ?>
-                <span style="color:#CBD5E1; margin-left:6px;"><?= number_format($prom,1) ?> &middot; <?= $totalRes ?> resena<?= $totalRes===1?'':'s' ?></span>
+                <span style="color:#CBD5E1; margin-left:6px;"><?= number_format($prom,1) ?> · <?= $totalRes ?> reseña<?= $totalRes===1?'':'s' ?></span>
             </p>
         </div>
         <div style="text-align:right;">
@@ -66,7 +65,6 @@ include __DIR__ . '/../includes/header.php';
 
     <div class="grid grid--2">
 
-        <!-- Detalle del proveedor -->
         <section>
             <article class="card">
                 <h3 class="card-title">Acerca</h3>
@@ -85,18 +83,11 @@ include __DIR__ . '/../includes/header.php';
                             <p class="mb-0" style="font-weight:600;"><?= e($datos['dias']) ?></p>
                         </div>
                     <?php endif; ?>
-                    <?php if (!empty($datos['telefono'])): ?>
-                        <div>
-                            <small class="text-muted">Telefono</small>
-                            <p class="mb-0" style="font-weight:600;"><?= e($datos['telefono']) ?></p>
-                        </div>
-                    <?php endif; ?>
                 </div>
             </article>
 
-            <!-- Resenas -->
             <article class="card mt-24">
-                <h3 class="card-title">Resenas (<?= $totalRes ?>)</h3>
+                <h3 class="card-title">Reseñas (<?= $totalRes ?>)</h3>
 
                 <?php if (current_role() === 'alumno'): ?>
                     <form method="POST" action="../actions/guardar_resena_action.php" style="border-bottom:1px solid var(--border); padding-bottom:16px; margin-bottom:8px;">
@@ -106,16 +97,16 @@ include __DIR__ . '/../includes/header.php';
                         <div class="rating-select" style="margin:8px 0; flex-direction:row-reverse; justify-content:flex-end;">
                             <?php for ($s=5; $s>=1; $s--): ?>
                                 <input type="radio" id="r-<?= $s ?>" name="calificacion" value="<?= $s ?>" <?= $s===5?'checked':'' ?>>
-                                <label for="r-<?= $s ?>">&#9733;</label>
+                                <label for="r-<?= $s ?>">★</label>
                             <?php endfor; ?>
                         </div>
                         <textarea name="comentario" placeholder="Comparte tu experiencia..." required></textarea>
-                        <button type="submit" class="btn btn--primary" style="margin-top:8px;">Publicar resena</button>
+                        <button type="submit" class="btn btn--primary" style="margin-top:8px;">Publicar reseña</button>
                     </form>
                 <?php endif; ?>
 
                 <?php if (empty($resenas)): ?>
-                    <p class="text-muted" style="margin-top:14px;">Aun no hay resenas. &iexcl;Se el primero en opinar!</p>
+                    <p class="text-muted" style="margin-top:14px;">Aun no hay reseñas. ¡Se el primero en opinar!</p>
                 <?php else: foreach ($resenas as $r): ?>
                     <div class="review">
                         <div class="review-head">
@@ -131,7 +122,6 @@ include __DIR__ . '/../includes/header.php';
             </article>
         </section>
 
-        <!-- Acciones -->
         <aside>
             <article class="card">
                 <h3 class="card-title">Acciones</h3>
@@ -143,25 +133,25 @@ include __DIR__ . '/../includes/header.php';
                         <input type="hidden" name="id_proveedor" value="<?= $id ?>">
                         <input type="hidden" name="tipo" value="<?= e($tipo) ?>">
                         <button class="btn <?= $favorito?'btn--ghost':'btn--primary' ?> btn--block" type="submit">
-                            <?= $favorito ? '&#9733; Quitar de favoritos' : '&#9734; Agregar a favoritos' ?>
+                            <?= $favorito ? '★ Quitar de favoritos' : '☆ Agregar a favoritos' ?>
                         </button>
                     </form>
                 <?php endif; ?>
 
                 <?php if (!empty($datos['telefono'])): ?>
                     <a class="btn btn--ghost btn--block" href="tel:<?= e($datos['telefono']) ?>" style="margin-bottom:10px;">
-                        &#128222; Llamar
+                        📞 Llamar
                     </a>
                     <a class="btn btn--ghost btn--block" target="_blank"
                        href="https://wa.me/<?= e(preg_replace('/\D+/','', $datos['telefono'])) ?>" style="margin-bottom:10px;">
-                        &#128172; WhatsApp
+                        💬 WhatsApp
                     </a>
                 <?php endif; ?>
 
                 <?php if (current_role() === 'alumno'): ?>
                     <button class="btn btn--primary btn--block" type="button"
                             onclick="document.getElementById('contactBox').style.display='block'; this.style.display='none';">
-                        Enviar mensaje
+                        Enviar mensaje interno
                     </button>
 
                     <form id="contactBox" style="display:none; margin-top:14px;"
@@ -179,6 +169,47 @@ include __DIR__ . '/../includes/header.php';
                         <button type="submit" class="btn btn--primary btn--block">Enviar</button>
                     </form>
                 <?php endif; ?>
+            </article>
+
+            <article id="seccion-contacto" class="card mt-24">
+                <h3 class="card-title">Contacto Directo</h3>
+                <p class="card-subtitle" style="margin-bottom: 16px;">Medios para comunicarte fuera de la plataforma.</p>
+                
+                <div class="grid" style="gap: 12px;">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <span class="tag tag--maestro mb-0">Correo</span>
+                        <p class="mt-0" style="margin-top: 4px;">
+                            <a href="mailto:<?= e($datos['correo'] ?? '') ?>" style="color: var(--text); font-weight: 500;">
+                                <?= e($datos['correo'] ?? 'No disponible') ?>
+                            </a>
+                        </p>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <span class="tag tag--maestro mb-0">Teléfono</span>
+                        <p class="mt-0" style="margin-top: 4px; font-weight: 500; color: var(--text);">
+                            <?= !empty($datos['telefono']) ? e($datos['telefono']) : 'No especificado' ?>
+                        </p>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <span class="tag tag--maestro mb-0">Redes Sociales</span>
+                        <div class="mt-0" style="margin-top: 4px;">
+                            <?php if (!empty($datos['red_social'])): 
+                                $enlaces = array_filter(array_map('trim', explode(',', $datos['red_social'])));
+                                foreach ($enlaces as $i => $enlace):
+                            ?>
+                                <a href="<?= e($enlace) ?>" target="_blank" style="color: var(--primary); font-weight: 500; display: block; margin-bottom: 4px;">
+                                    Visitar perfil <?= count($enlaces) > 1 ? ($i + 1) : '' ?>
+                                </a>
+                            <?php 
+                                endforeach;
+                            else: ?>
+                                <span style="color: var(--text-light);">No especificadas</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
             </article>
 
             <article class="card mt-24">
