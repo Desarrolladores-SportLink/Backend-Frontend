@@ -2,7 +2,6 @@
 /**
  * SportLink - UI_Search (vista de busqueda con filtros)
  * Subcomponente de presentacion (SDD seccion 5).
- * Implementa el flujo:  showSearchForm -> captureFilters -> fnSearchByFilters -> fnRenderSearchResults
  */
 require_once __DIR__ . '/../includes/auth_check.php';
 require_role('alumno');
@@ -23,7 +22,6 @@ include __DIR__ . '/../includes/header.php';
 <div class="container">
     <div class="search-layout">
 
-        <!-- Panel de filtros -->
         <aside class="card">
             <h3 class="card-title">Filtros de busqueda</h3>
             <p class="card-subtitle">Refina los resultados segun tus preferencias</p>
@@ -71,7 +69,6 @@ include __DIR__ . '/../includes/header.php';
             </form>
         </aside>
 
-        <!-- Resultados -->
         <section>
             <div class="flex-between" style="margin-bottom:14px;">
                 <h2 class="mb-0">
@@ -120,13 +117,30 @@ include __DIR__ . '/../includes/header.php';
                         <div class="result-actions">
                             <a class="btn btn--primary btn--sm"
                                href="perfil_publico.php?id=<?= (int)$row['id_usuario'] ?>&tipo=<?= e($tipo) ?>">Ver perfil</a>
-                            <form method="POST" action="../actions/<?= $favorito?'quitar_favorito_action.php':'guardar_favorito_action.php' ?>">
+                            <form method="POST" action="../actions/<?= $favorito?'quitar_favorito_action.php':'guardar_favorito_action.php' ?>" style="margin-bottom: 0;">
                                 <input type="hidden" name="id_proveedor" value="<?= (int)$row['id_usuario'] ?>">
                                 <input type="hidden" name="tipo" value="<?= e($tipo) ?>">
                                 <button class="btn btn--ghost btn--sm btn--block" type="submit">
                                     <?= $favorito?'&#9733; Guardado':'&#9734; Favorito' ?>
                                 </button>
                             </form>
+                            <button type="button" class="btn btn--ghost btn--sm btn--block" onclick="const el = document.getElementById('contacto-<?= (int)$row['id_usuario'] ?>'); el.style.display = el.style.display === 'none' ? 'block' : 'none';">
+                                Contacto
+                            </button>
+                        </div>
+                        
+                        <div id="contacto-<?= (int)$row['id_usuario'] ?>" style="display:none; grid-column: 1 / -1; background: var(--surface-2); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); font-size: 13px; margin-top: 8px;">
+                            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                                <div><strong>📧 Correo:</strong> <a href="mailto:<?= e($row['correo'] ?? '') ?>"><?= e($row['correo'] ?? 'No disponible') ?></a></div>
+                                <div><strong>📞 Teléfono:</strong> <?= !empty($row['telefono']) ? e($row['telefono']) : 'No especificado' ?></div>
+                                <div><strong>🌐 Red Social:</strong> 
+                                    <?php if (!empty($row['red_social'])): ?>
+                                        <a href="<?= e($row['red_social']) ?>" target="_blank">Visitar perfil</a>
+                                    <?php else: ?>
+                                        <span class="text-light">No especificada</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
                         </div>
                     </article>
                 <?php endforeach; ?>
@@ -135,4 +149,5 @@ include __DIR__ . '/../includes/header.php';
     </div>
 </div>
 
+<?php include __DIR__ . '/../includes/header.php'; ?>
 <?php include __DIR__ . '/../includes/footer.php'; ?>
