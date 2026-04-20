@@ -12,7 +12,7 @@ $r  = pg_query_params(
     $conexion,
     "SELECT u.nombre, u.apellidos,
             m.especialidad, m.experiencia, m.precio,
-            m.ubicacion, m.telefono, m.descripcion, m.dias
+            m.ubicacion, m.telefono, m.descripcion, m.dias, m.red_social
      FROM usuario u
      INNER JOIN maestro m ON u.id_usuario = m.id_usuario
      WHERE u.id_usuario = $1",
@@ -48,23 +48,38 @@ include __DIR__ . '/../includes/header.php';
                     <input type="text" name="especialidad" value="<?= e($d['especialidad'] ?? '') ?>" required placeholder="Ej. Tenis, Natacion">
                 </div>
                 <div class="form-group">
-                    <label>Anos de experiencia</label>
-                    <input type="text" name="experiencia" value="<?= e($d['experiencia'] ?? '') ?>" placeholder="Ej. 5 anos">
+                    <label>Años de experiencia</label>
+                    <input type="text" name="experiencia" value="<?= e($d['experiencia'] ?? '') ?>" placeholder="Ej. 5 años">
                 </div>
                 <div class="form-group">
                     <label>Precio por clase (MXN)</label>
                     <input type="number" step="0.01" name="precio" value="<?= e($d['precio'] ?? '') ?>" placeholder="Ej. 250.00">
                 </div>
                 <div class="form-group">
-                    <label>Telefono</label>
+                    <label>Teléfono</label>
                     <input type="tel" name="telefono" value="<?= e($d['telefono'] ?? '') ?>">
                 </div>
+                
+                <div class="form-group" style="grid-column:1/-1;" id="redes-container">
+                    <label>Enlaces de Redes Sociales</label>
+                    <?php 
+                    $redes_arr = array_filter(array_map('trim', explode(',', $d['red_social'] ?? '')));
+                    if (empty($redes_arr)): ?>
+                        <input type="text" name="red_social[]" value="" placeholder="Ej. https://instagram.com/tu_perfil" style="margin-bottom: 8px;">
+                    <?php else: 
+                        foreach ($redes_arr as $red): ?>
+                            <input type="text" name="red_social[]" value="<?= e($red) ?>" placeholder="Ej. https://instagram.com/tu_perfil" style="margin-bottom: 8px;">
+                    <?php endforeach; 
+                    endif; ?>
+                    <button type="button" class="btn btn--ghost btn--sm" onclick="addRedSocial()" style="margin-top: 4px;">+ Agregar otra red</button>
+                </div>
+
                 <div class="form-group" style="grid-column:1/-1;">
-                    <label>Ubicacion / Zona de clases</label>
+                    <label>Ubicación / Zona de clases</label>
                     <input type="text" name="ubicacion" value="<?= e($d['ubicacion'] ?? '') ?>" placeholder="Ej. Parque Metropolitano, Zapopan">
                 </div>
                 <div class="form-group" style="grid-column:1/-1;">
-                    <label>Dias disponibles</label>
+                    <label>Días disponibles</label>
                     <div class="chip-group">
                         <?php foreach (dias_disponibles() as $dia):
                             $on = in_array($dia, $dias_sel, true); ?>
@@ -77,13 +92,29 @@ include __DIR__ . '/../includes/header.php';
                     <input type="hidden" name="dias" value="<?= e($d['dias'] ?? '') ?>">
                 </div>
                 <div class="form-group" style="grid-column:1/-1;">
-                    <label>Descripcion / Sobre ti</label>
-                    <textarea name="descripcion" rows="4" placeholder="Cuentanos tu metodo de ensenanza..."><?= e($d['descripcion'] ?? '') ?></textarea>
+                    <label>Descripción / Sobre ti</label>
+                    <textarea name="descripcion" rows="4" placeholder="Cuéntanos tu método de enseñanza..."><?= e($d['descripcion'] ?? '') ?></textarea>
                 </div>
             </div>
-            <button type="submit" class="btn btn--primary">Guardar perfil</button>
+            
+            <div style="margin-top: 20px;">
+                <button type="submit" class="btn btn--primary">Guardar perfil</button>
+            </div>
         </form>
     </article>
 </div>
+
+<script>
+function addRedSocial() {
+    const container = document.getElementById('redes-container');
+    const btn = container.querySelector('button');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.name = 'red_social[]';
+    input.placeholder = 'Ej. https://facebook.com/tu_perfil';
+    input.style.marginBottom = '8px';
+    container.insertBefore(input, btn);
+}
+</script>
 
 <?php include __DIR__ . '/../includes/footer.php'; ?>
