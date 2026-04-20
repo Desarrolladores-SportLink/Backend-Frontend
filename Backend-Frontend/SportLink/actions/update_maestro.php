@@ -15,6 +15,16 @@ $telefono     = trim($_POST['telefono']     ?? '') ?: null;
 $descripcion  = trim($_POST['descripcion']  ?? '') ?: null;
 $dias         = !empty($_POST['dias_arr']) ? implode(',', array_map('trim', $_POST['dias_arr'])) : null;
 
+// Convertir el arreglo de redes sociales en una cadena separada por comas
+$redes_post = $_POST['red_social'] ?? [];
+$red_social = null;
+if (is_array($redes_post)) {
+    $redes_limpias = array_filter(array_map('trim', $redes_post));
+    if (!empty($redes_limpias)) {
+        $red_social = implode(',', $redes_limpias);
+    }
+}
+
 $ok = pg_query_params(
     $conexion,
     "UPDATE maestro
@@ -24,9 +34,10 @@ $ok = pg_query_params(
             ubicacion    = $4,
             telefono     = $5,
             descripcion  = $6,
-            dias         = $7
-      WHERE id_usuario = $8",
-    [$especialidad, $experiencia, $precio, $ubicacion, $telefono, $descripcion, $dias, $id]
+            dias         = $7,
+            red_social   = $8
+      WHERE id_usuario = $9",
+    [$especialidad, $experiencia, $precio, $ubicacion, $telefono, $descripcion, $dias, $red_social, $id]
 );
 
 $_SESSION['mensaje_perfil'] = $ok ? 'Tu perfil se actualizo correctamente.' : 'Error al guardar los datos.';
