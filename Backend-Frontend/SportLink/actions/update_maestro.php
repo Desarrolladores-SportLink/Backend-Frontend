@@ -15,7 +15,6 @@ $telefono     = trim($_POST['telefono']     ?? '') ?: null;
 $descripcion  = trim($_POST['descripcion']  ?? '') ?: null;
 $dias         = !empty($_POST['dias_arr']) ? implode(',', array_map('trim', $_POST['dias_arr'])) : null;
 
-// Convertir el arreglo de redes sociales en una cadena separada por comas
 $redes_post = $_POST['red_social'] ?? [];
 $red_social = null;
 if (is_array($redes_post)) {
