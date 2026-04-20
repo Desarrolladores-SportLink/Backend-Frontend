@@ -1,36 +1,31 @@
 <?php
 /**
  * SportLink - Action_SearchLogic
- * Subcomponente de logica de aplicacion (SDD seccion 5).
- * Coordina la captura de filtros, su validacion y la ejecucion de la consulta
- * a traves del DB_QueryHandler.
- *
- * Funciones expuestas:
- *   - captureFilters(): array
- *   - fnValidateFilters(array $filtrosBusqueda): bool
- *   - fnSearchByFilters(array $filtrosBusqueda): array
+ * Coordina la captura, validacion y ejecucion de la busqueda.
  */
 
 require_once __DIR__ . '/db_query_handler.php';
 
 /**
- * captureFilters (SDD figura 2, seccion 4)
- * Recolecta los filtros enviados por el formulario (GET) y los normaliza.
+ * captureFilters
+ * Recolecta los filtros del formulario (GET) y los normaliza.
  */
 function captureFilters(): array {
     return [
         'tipo'       => trim($_GET['tipo']       ?? 'maestro'),
         'deporte'    => trim($_GET['deporte']    ?? ''),
+        'lat'        => trim($_GET['lat']        ?? ''),
+        'lng'        => trim($_GET['lng']        ?? ''),
         'precio_max' => trim($_GET['precio_max'] ?? ''),
         'dias'       => trim($_GET['dias']       ?? ''),
         'ubicacion'  => trim($_GET['ubicacion']  ?? ''),
+        'dias_arr'   => $_GET['dias_arr']        ?? [] // Para filtros multiples
     ];
 }
 
 /**
  * fnValidateFilters (SDD 5.2.2)
- * Sanitiza y valida los datos recibidos.
- * Retorna true si el arreglo esta limpio y listo para construir la consulta.
+ * Sanitiza los datos y permite direcciones largas de geolocalización.
  */
 function fnValidateFilters(array &$filtrosBusqueda): bool {
     $tiposPermitidos = ['maestro', 'escuela'];
@@ -42,7 +37,10 @@ function fnValidateFilters(array &$filtrosBusqueda): bool {
         $val = $filtrosBusqueda[$campo] ?? '';
         if ($val !== '') {
             $val = preg_replace('/[\\\\;\'"`]/u', '', $val);
-            if (mb_strlen($val) > 80) return false;
+            
+            // Aumentamos el límite a 250 para direcciones de Nominatim/GPS
+            if (mb_strlen($val) > 250) return false; 
+            
             $filtrosBusqueda[$campo] = $val;
         }
     }
@@ -60,10 +58,6 @@ function fnValidateFilters(array &$filtrosBusqueda): bool {
 
 /**
  * fnSearchByFilters (SDD 5.2.1)
- * Funcion principal: captura -> valida -> ejecuta -> retorna arreglo de objetos.
- *
- * @param array $filtrosBusqueda  arreglo asociativo (puede venir de captureFilters())
- * @return array  filas de resultados (vacio si nada coincide)
  */
 function fnSearchByFilters(array $filtrosBusqueda): array {
     if (!fnValidateFilters($filtrosBusqueda)) return [];
