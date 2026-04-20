@@ -17,6 +17,16 @@ $telefono           = trim($_POST['telefono']           ?? '') ?: null;
 $descripcion        = trim($_POST['descripcion']        ?? '') ?: null;
 $dias               = !empty($_POST['dias_arr']) ? implode(',', array_map('trim', $_POST['dias_arr'])) : null;
 
+// Manejo de redes social
+$redes_post = $_POST['red_social'] ?? [];
+$red_social = null;
+if (is_array($redes_post)) {
+    $redes_limpias = array_filter(array_map('trim', $redes_post));
+    if (!empty($redes_limpias)) {
+        $red_social = implode(',', $redes_limpias);
+    }
+}
+
 $ok = pg_query_params(
     $conexion,
     "UPDATE escuela
@@ -29,10 +39,11 @@ $ok = pg_query_params(
             ubicacion          = $6,
             telefono           = $7,
             descripcion        = $8,
-            dias               = $9
-      WHERE id_usuario = $10",
+            dias               = $9,
+            red_social         = $10
+      WHERE id_usuario = $11",
     [$nombre_escuela, $direccion, $deporte, $deportes_ofrecidos,
-     $mensualidad, $ubicacion, $telefono, $descripcion, $dias, $id]
+     $mensualidad, $ubicacion, $telefono, $descripcion, $dias, $red_social, $id]
 );
 
 $_SESSION['mensaje_escuela'] = $ok ? 'Datos de la escuela actualizados.' : 'Error al actualizar.';
