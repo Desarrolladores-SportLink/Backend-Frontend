@@ -24,11 +24,13 @@ function fnExecuteSearchQuery($conexion, array $validFilters): array {
 
     if ($tipo === 'escuela') {
         $sql = "SELECT u.id_usuario,
+                       u.correo,
                        e.nombre_escuela AS nombre,
                        COALESCE(e.deporte, e.deportes_ofrecidos) AS deporte,
                        COALESCE(e.precio, e.mensualidad) AS precio,
                        COALESCE(e.ubicacion, e.direccion) AS ubicacion,
                        e.telefono,
+                       e.red_social,
                        e.dias,
                        e.descripcion,
                        e.foto,
@@ -60,10 +62,12 @@ function fnExecuteSearchQuery($conexion, array $validFilters): array {
     } else {
         $sql = "SELECT u.id_usuario,
                        u.nombre,
+                       u.correo,
                        m.especialidad AS deporte,
                        m.precio,
                        m.ubicacion,
                        m.telefono,
+                       m.red_social,
                        m.dias,
                        m.descripcion,
                        m.experiencia,
@@ -110,19 +114,19 @@ function fnExecuteSearchQuery($conexion, array $validFilters): array {
  */
 function fnGetProveedorById($conexion, int $id, string $tipo): ?array {
     if ($tipo === 'escuela') {
-        $sql = "SELECT u.id_usuario, u.nombre AS representante,
+        $sql = "SELECT u.id_usuario, u.nombre AS representante, u.correo,
                        e.nombre_escuela, e.direccion,
                        COALESCE(e.deporte, e.deportes_ofrecidos) AS deporte,
                        e.deportes_ofrecidos,
                        COALESCE(e.precio, e.mensualidad) AS precio,
                        e.mensualidad, e.ubicacion, e.telefono,
-                       e.descripcion, e.dias, e.foto
+                       e.descripcion, e.dias, e.foto, e.red_social
                 FROM usuario u INNER JOIN escuela e ON u.id_usuario = e.id_usuario
                 WHERE u.id_usuario = $1";
     } else {
-        $sql = "SELECT u.id_usuario, u.nombre, u.apellidos,
+        $sql = "SELECT u.id_usuario, u.nombre, u.apellidos, u.correo,
                        m.especialidad, m.experiencia, m.precio,
-                       m.ubicacion, m.telefono, m.descripcion, m.dias, m.foto
+                       m.ubicacion, m.telefono, m.descripcion, m.dias, m.foto, m.red_social
                 FROM usuario u INNER JOIN maestro m ON u.id_usuario = m.id_usuario
                 WHERE u.id_usuario = $1";
     }
