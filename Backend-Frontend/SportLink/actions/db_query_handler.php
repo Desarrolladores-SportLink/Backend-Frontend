@@ -2,110 +2,117 @@
 /**
  * SportLink - DB_QueryHandler
  * Subcomponente de persistencia (SDD seccion 5, interfaz iBEtoDB).
- *
  * Encapsula la construccion y ejecucion de consultas SQL sobre PostgreSQL.
- * Toda la logica de acceso a datos del modulo de busqueda vive aqui para
- * mantener separadas las responsabilidades (UI_Search / Action_SearchLogic / DB_QueryHandler).
  */
 
 /**
  * fnExecuteSearchQuery (SDD 5.2.3)
- * Ejecuta la busqueda dinamica sobre maestro o escuela aplicando los filtros
- * previamente validados.
- *
- * @param resource $conexion
- * @param array    $validFilters  ['tipo','deporte','precio_max','dias','ubicacion']
- * @return array   filas obtenidas (puede ser arreglo vacio)
+ * Ejecuta la busqueda dinamica aplicando filtros y calculando proximidad.
+ * Maneja direcciones largas de Nominatim simplificándolas automáticamente.
  */
 function fnExecuteSearchQuery($conexion, array $validFilters): array {
     $tipo = $validFilters['tipo'] ?? 'maestro';
+    
+    // Normalización de coordenadas para asegurar cálculos matemáticos válidos
+    $latUser = (isset($validFilters['lat']) && $validFilters['lat'] !== '') ? (float)$validFilters['lat'] : null;
+    $lngUser = (isset($validFilters['lng']) && $validFilters['lng'] !== '') ? (float)$validFilters['lng'] : null;
+    
+    // Limpieza de direcciones largas (ej. de Nominatim) para mejorar coincidencias de texto
+    $ubicacionRaw = $validFilters['ubicacion'] ?? '';
+    $ubicacionBusqueda = $ubicacionRaw;
+    if (strlen($ubicacionRaw) > 40 && strpos($ubicacionRaw, ',') !== false) {
+        $partes = explode(',', $ubicacionRaw);
+        $ubicacionBusqueda = trim($partes[0]); 
+    }
+
     $params = [];
     $i = 1;
 
+    // 1. Lógica de Proximidad (Fórmula de Haversine)
+    $distSql = "";
+    if ($latUser !== null && $lngUser !== null) {
+        // LEAST/GREATEST previene errores de precisión que harían fallar a acos()
+        $distSql = ", (6371 * acos(LEAST(1, GREATEST(-1, cos(radians($".$i.")) * cos(radians(t.latitud)) * cos(radians(t.longitud) - radians($".($i+1).")) + sin(radians($".$i.")) * sin(radians(t.latitud)))))) AS distancia";
+        $params[] = $latUser;
+        $params[] = $lngUser;
+        $i += 2;
+    }
+
+    // 2. Construcción de la consulta base (Usando alias 't' para el perfil)
     if ($tipo === 'escuela') {
-        $sql = "SELECT u.id_usuario,
-                       u.correo,
-                       e.nombre_escuela AS nombre,
-                       COALESCE(e.deporte, e.deportes_ofrecidos) AS deporte,
-                       COALESCE(e.precio, e.mensualidad) AS precio,
-                       COALESCE(e.ubicacion, e.direccion) AS ubicacion,
-                       e.telefono,
-                       e.red_social,
-                       e.dias,
-                       e.descripcion,
-                       e.foto,
-                       'escuela' AS tipo
+        $sql = "SELECT u.id_usuario, u.correo, t.nombre_escuela AS nombre, 
+                       COALESCE(t.deporte, t.deportes_ofrecidos) AS deporte,
+                       COALESCE(t.precio, t.mensualidad) AS precio,
+                       COALESCE(t.ubicacion, t.direccion) AS ubicacion,
+                       t.telefono, t.red_social, t.dias, t.descripcion, t.foto,
+                       'escuela' AS tipo $distSql
                 FROM usuario u
-                INNER JOIN escuela e ON u.id_usuario = e.id_usuario
+                INNER JOIN escuela AS t ON u.id_usuario = t.id_usuario
                 WHERE 1=1";
 
         if (!empty($validFilters['deporte'])) {
-            $sql .= " AND (e.deporte ILIKE $".$i." OR e.deportes_ofrecidos ILIKE $".$i.")";
+            $sql .= " AND (t.deporte ILIKE $".$i." OR t.deportes_ofrecidos ILIKE $".$i.")";
             $params[] = '%'.$validFilters['deporte'].'%';
-            $i++;
-        }
-        if (isset($validFilters['precio_max']) && $validFilters['precio_max'] !== '') {
-            $sql .= " AND COALESCE(e.precio, e.mensualidad, 0) <= $".$i;
-            $params[] = $validFilters['precio_max'];
-            $i++;
-        }
-        if (!empty($validFilters['ubicacion'])) {
-            $sql .= " AND (e.ubicacion ILIKE $".$i." OR e.direccion ILIKE $".$i.")";
-            $params[] = '%'.$validFilters['ubicacion'].'%';
-            $i++;
-        }
-        if (!empty($validFilters['dias'])) {
-            $sql .= " AND e.dias ILIKE $".$i;
-            $params[] = '%'.$validFilters['dias'].'%';
             $i++;
         }
     } else {
-        $sql = "SELECT u.id_usuario,
-                       u.nombre,
-                       u.correo,
-                       m.especialidad AS deporte,
-                       m.precio,
-                       m.ubicacion,
-                       m.telefono,
-                       m.red_social,
-                       m.dias,
-                       m.descripcion,
-                       m.experiencia,
-                       m.foto,
-                       'maestro' AS tipo
+        $sql = "SELECT u.id_usuario, u.nombre, u.correo,
+                       t.especialidad AS deporte, t.precio, t.ubicacion,
+                       t.telefono, t.red_social, t.dias, t.descripcion,
+                       t.experiencia, t.foto, 'maestro' AS tipo $distSql
                 FROM usuario u
-                INNER JOIN maestro m ON u.id_usuario = m.id_usuario
+                INNER JOIN maestro AS t ON u.id_usuario = t.id_usuario
                 WHERE 1=1";
 
         if (!empty($validFilters['deporte'])) {
-            $sql .= " AND m.especialidad ILIKE $".$i;
+            $sql .= " AND t.especialidad ILIKE $".$i;
             $params[] = '%'.$validFilters['deporte'].'%';
-            $i++;
-        }
-        if (isset($validFilters['precio_max']) && $validFilters['precio_max'] !== '') {
-            $sql .= " AND m.precio <= $".$i;
-            $params[] = $validFilters['precio_max'];
-            $i++;
-        }
-        if (!empty($validFilters['ubicacion'])) {
-            $sql .= " AND m.ubicacion ILIKE $".$i;
-            $params[] = '%'.$validFilters['ubicacion'].'%';
-            $i++;
-        }
-        if (!empty($validFilters['dias'])) {
-            $sql .= " AND m.dias ILIKE $".$i;
-            $params[] = '%'.$validFilters['dias'].'%';
             $i++;
         }
     }
 
-    $sql .= " ORDER BY u.fecha_registro DESC LIMIT 100";
+    // 3. Filtro de Presupuesto Máximo
+    if (isset($validFilters['precio_max']) && $validFilters['precio_max'] !== '') {
+        $sql .= " AND COALESCE(t.precio, 0) <= $".$i;
+        $params[] = $validFilters['precio_max'];
+        $i++;
+    }
+
+    // 4. Lógica de Ubicación por Texto (Solo si NO hay coordenadas)
+    if ($latUser === null || $lngUser === null) { 
+        if (!empty($ubicacionBusqueda) && $ubicacionBusqueda !== 'Cerca de mi ubicación actual') {
+            $sql .= " AND (t.ubicacion ILIKE $".$i." OR t.direccion ILIKE $".$i.")";
+            $params[] = '%'.$ubicacionBusqueda.'%';
+            $i++;
+        }
+    }
+
+    // 5. Filtro de Días disponibles
+    if (!empty($validFilters['dias'])) {
+        $sql .= " AND t.dias ILIKE $".$i;
+        $params[] = '%'.$validFilters['dias'].'%';
+        $i++;
+    }
+
+    // 6. Ordenamiento: Prioridad a cercanía si hay coordenadas
+    if ($latUser !== null && $lngUser !== null) {
+        $sql .= " ORDER BY distancia ASC";
+    } else {
+        $sql .= " ORDER BY u.id_usuario DESC";
+    }
+
+    $sql .= " LIMIT 50";
 
     $result = pg_query_params($conexion, $sql, $params);
     if (!$result) return [];
 
     $rows = [];
-    while ($r = pg_fetch_assoc($result)) $rows[] = $r;
+    while ($r = pg_fetch_assoc($result)) {
+        if (isset($r['distancia'])) {
+            $r['distancia'] = round((float)$r['distancia'], 2);
+        }
+        $rows[] = $r;
+    }
     return $rows;
 }
 
@@ -136,7 +143,7 @@ function fnGetProveedorById($conexion, int $id, string $tipo): ?array {
 }
 
 /**
- * Lista las resenas de un proveedor (maestro o escuela) con nombre del autor.
+ * Lista las resenas de un proveedor con nombre del autor.
  */
 function fnGetResenasProveedor($conexion, int $id_proveedor): array {
     $r = pg_query_params($conexion,
