@@ -373,12 +373,13 @@ select {
 .auth-wrapper {
     min-height: 100vh;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     padding: 40px 16px;
     background: linear-gradient(135deg, var(--dark) 0%, var(--dark-2) 100%);
     position: relative;
-    overflow: hidden;
+
+    overflow-y: auto;
 }
 .auth-wrapper::before {
     content: "";
@@ -396,6 +397,8 @@ select {
     border-radius: var(--radius-lg);
     padding: 40px 34px;
     box-shadow: var(--shadow-lg);
+
+    margin: 20px 0;
 }
 .auth-card .logo {
     display: block;
@@ -446,4 +449,8 @@ select {
     align-items: center;
     gap: 5px;
     border: 1px solid rgba(255, 107, 0, 0.2);
+}
+
+html, body {
+    overflow-y: auto;
 }
